@@ -15,7 +15,7 @@ usage() {
   VERSION=1.2.0 ./build.sh              バージョンを指定してビルド
 
 環境変数:
-  VERSION  バイナリに埋め込むバージョン (既定: main.go に書かれた値)
+  VERSION  バイナリに埋め込むバージョン (既定: cmd/secnote/main.go に書かれた値)
   OUT      出力先ディレクトリ (既定: dist)
 
 指定できる OS/ARCH の一覧は `go tool dist list` で確認できます。
@@ -57,7 +57,7 @@ if [ -n "${VERSION:-}" ]; then
 else
 	# Ask the program itself, so main.go stays the only place the version
 	# is written down.
-	version=$(go run . -version | awk '{print $2}')
+	version=$(go run ./cmd/secnote -version | awk '{print $2}')
 fi
 
 mkdir -p "$out"
@@ -73,7 +73,7 @@ for target in "$@"; do
 	# cgo stays off so that every target builds from any host without a
 	# cross compiler.
 	GOOS=$os GOARCH=$arch CGO_ENABLED=0 \
-		go build -trimpath -ldflags "$ldflags" -o "$out/$name" .
+		go build -trimpath -ldflags "$ldflags" -o "$out/$name" ./cmd/secnote
 	built+=("$name")
 done
 

@@ -14,7 +14,13 @@ Go 製で、Linux / macOS / Windows で同じように動きます (cgo 不要�
 Go 1.25 以降が必要です。
 
 ```bash
-go build -o secnote .
+go build -o secnote ./cmd/secnote
+```
+
+ソースを取得せずに、`go install` で直接入れることもできます (`secnote` という名前で `$(go env GOPATH)/bin` に入ります)。
+
+```bash
+go install github.com/Max0n-1027/go-secnote/cmd/secnote@latest
 ```
 
 Linux / Windows / macOS の amd64・arm64 向けをまとめてビルドするには `build.sh` を使います。
@@ -145,6 +151,7 @@ go test ./...
 
 | パッケージ | 役割 |
 | --- | --- |
+| `cmd/secnote` | コマンド本体 (起動オプションの解釈) |
 | `internal/vault` | age 形式での暗号化・復号、アトミックな書き込み |
 | `internal/textbuf` | 行バッファと元に戻す/やり直しの履歴 |
 | `internal/ui` | 画面描画、キー・マウス処理、メニュー、ダイアログ (tcell) |
