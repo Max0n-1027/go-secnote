@@ -1,0 +1,8 @@
+# Build output
+/secnote
+/dist/
+*.exe
+
+# Test binaries and profiles
+*.test
+*.out
