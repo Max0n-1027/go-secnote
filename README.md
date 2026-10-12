@@ -156,6 +156,28 @@ go test ./...
 | `internal/textbuf` | 行バッファと元に戻す/やり直しの履歴 |
 | `internal/ui` | 画面描画、キー・マウス処理、メニュー、ダイアログ (tcell) |
 
+### CI
+
+`main` への push とプルリクエストごとに、GitHub Actions ([ci.yml](.github/workflows/ci.yml)) が次を実行します。
+
+- Linux / Windows / macOS での `go vet` と `go test`
+- `go.mod` に書かれた最も古い Go でのテスト
+- `gofmt` と `go mod tidy` の確認、レース検出付きのテスト、`build.sh` による全ターゲットのビルド
+
+### リリース
+
+`v` で始まるタグを push すると、[release.yml](.github/workflows/release.yml) がテストとビルドを行い、
+全ターゲットのバイナリと `SHA256SUMS` を付けた GitHub Release を公開します。
+
+1. `cmd/secnote/main.go` の `version` を新しいバージョンに書き換えてコミットし、push する
+2. 同じバージョンのタグを付けて push する
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+タグと `main.go` のバージョンが食い違っていると、リリースは失敗して何も公開されません。
+
 ## ライセンス
 
 [MIT License](LICENSE)
