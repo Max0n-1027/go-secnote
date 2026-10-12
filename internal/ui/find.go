@@ -9,7 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 
-	"secnote/internal/textbuf"
+	"github.com/Max0n-1027/go-secnote/internal/textbuf"
 )
 
 // findState is what the find bar remembers between uses.

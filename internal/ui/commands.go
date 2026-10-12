@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"secnote/internal/vault"
+	"github.com/Max0n-1027/go-secnote/internal/vault"
 )
 
 // maxFileSize is the largest file the editor will load. Everything is held

@@ -1,4 +1,4 @@
-module secnote
+module github.com/Max0n-1027/go-secnote
 
 go 1.25.0
 

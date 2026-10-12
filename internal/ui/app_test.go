@@ -9,7 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 
-	"secnote/internal/vault"
+	"github.com/Max0n-1027/go-secnote/internal/vault"
 )
 
 func TestMain(m *testing.M) {

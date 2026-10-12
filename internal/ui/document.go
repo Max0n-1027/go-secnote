@@ -10,7 +10,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 
-	"secnote/internal/textbuf"
+	"github.com/Max0n-1027/go-secnote/internal/textbuf"
 )
 
 type pos = textbuf.Pos

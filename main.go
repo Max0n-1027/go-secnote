@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"secnote/internal/ui"
+	"github.com/Max0n-1027/go-secnote/internal/ui"
 )
 
 var version = "0.1.0"

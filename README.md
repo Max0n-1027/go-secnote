@@ -148,3 +148,7 @@ go test ./...
 | `internal/vault` | age 形式での暗号化・復号、アトミックな書き込み |
 | `internal/textbuf` | 行バッファと元に戻す/やり直しの履歴 |
 | `internal/ui` | 画面描画、キー・マウス処理、メニュー、ダイアログ (tcell) |
+
+## ライセンス
+
+[MIT License](LICENSE)
