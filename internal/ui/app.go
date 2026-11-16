@@ -285,7 +285,6 @@ func (a *App) drawStatus() {
 		{fmt.Sprintf("行 %d, 列 %d", d.cur.Line+1, d.column()), a.cmdGoto},
 		{a.indentLabel(), a.cmdToggleIndent},
 		{a.eolLabel(), a.cmdToggleEOL},
-		{"UTF-8", nil},
 	}
 	left := a.status
 	if left == "" {

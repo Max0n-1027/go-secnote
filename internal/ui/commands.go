@@ -354,7 +354,6 @@ func (a *App) cmdAbout() {
 	a.messageBox("バージョン情報",
 		"secnote "+a.version+"\n"+
 			"パスワードで暗号化して保存するテキストエディター\n\n"+
-			"ファイル形式: age (scrypt パスフレーズ)\n"+
-			"文字コード: UTF-8",
+			"ファイル形式: age (scrypt パスフレーズ)",
 		"OK")
 }

@@ -424,6 +424,26 @@ func TestPlainFileIsSavedAsEncryptedCopy(t *testing.T) {
 	}
 }
 
+// The editor only ever works in one encoding, so it has no reason to show
+// which. The name comes up only when a file in another encoding is refused.
+func TestEncodingIsNotShown(t *testing.T) {
+	h := start(t)
+	h.typ("text")
+	check := func(where string) {
+		t.Helper()
+		for _, row := range h.screen() {
+			if strings.Contains(row, "UTF-8") || strings.Contains(row, "文字コード") {
+				t.Fatalf("%s names the encoding: %q", where, row)
+			}
+		}
+	}
+	check("the status bar")
+	h.alt('h')
+	h.typ("a") // バージョン情報(A)
+	h.wantOnScreen("ファイル形式")
+	check("the About box")
+}
+
 func TestRejectsNonUTF8(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sjis.txt")
 	if err := os.WriteFile(path, []byte{0x93, 0xfa, 0x96, 0x7b}, 0o644); err != nil {
