@@ -33,49 +33,50 @@ func (it menuItem) usable() bool {
 }
 
 func (a *App) buildMenus() []menu {
+	m := a.msg
 	onOff := func(on bool) string {
 		if on {
-			return "オン"
+			return m.On
 		}
-		return "オフ"
+		return m.Off
 	}
 	sep := menuItem{}
 	return []menu{
-		{label: "ファイル(F)", items: []menuItem{
-			{label: "新規(N)", hint: "Ctrl+N", run: a.cmdNew},
-			{label: "開く(O)...", hint: "Ctrl+O", run: a.cmdOpen},
-			{label: "上書き保存(S)", hint: "Ctrl+S", run: a.cmdSave},
-			{label: "名前を付けて保存(A)...", run: a.cmdSaveAs},
-			{label: "閉じる(C)", hint: "Ctrl+W", run: a.cmdClose},
+		{label: m.MenuFile, items: []menuItem{
+			{label: m.New, hint: "Ctrl+N", run: a.cmdNew},
+			{label: m.Open, hint: "Ctrl+O", run: a.cmdOpen},
+			{label: m.Save, hint: "Ctrl+S", run: a.cmdSave},
+			{label: m.SaveAs, run: a.cmdSaveAs},
+			{label: m.Close, hint: "Ctrl+W", run: a.cmdClose},
 			sep,
-			{label: "終了(X)", hint: "Ctrl+Q", run: a.cmdQuit},
+			{label: m.Exit, hint: "Ctrl+Q", run: a.cmdQuit},
 		}},
-		{label: "編集(E)", items: []menuItem{
-			{label: "元に戻す(U)", hint: "Ctrl+Z", run: a.cmdUndo, enabled: func() bool { return a.doc().buf.CanUndo() }},
-			{label: "やり直し(R)", hint: "Ctrl+Y", run: a.cmdRedo, enabled: func() bool { return a.doc().buf.CanRedo() }},
+		{label: m.MenuEdit, items: []menuItem{
+			{label: m.Undo, hint: "Ctrl+Z", run: a.cmdUndo, enabled: func() bool { return a.doc().buf.CanUndo() }},
+			{label: m.Redo, hint: "Ctrl+Y", run: a.cmdRedo, enabled: func() bool { return a.doc().buf.CanRedo() }},
 			sep,
-			{label: "切り取り(T)", hint: "Ctrl+X", run: a.cmdCut, enabled: func() bool { return a.doc().hasSel() }},
-			{label: "コピー(C)", hint: "Ctrl+C", run: a.cmdCopy, enabled: func() bool { return a.doc().hasSel() }},
-			{label: "貼り付け(P)", hint: "Ctrl+V", run: a.cmdPaste},
+			{label: m.Cut, hint: "Ctrl+X", run: a.cmdCut, enabled: func() bool { return a.doc().hasSel() }},
+			{label: m.Copy, hint: "Ctrl+C", run: a.cmdCopy, enabled: func() bool { return a.doc().hasSel() }},
+			{label: m.Paste, hint: "Ctrl+V", run: a.cmdPaste},
 			sep,
-			{label: "検索(F)...", hint: "Ctrl+F", run: func() { a.findBar(false) }},
-			{label: "置換(E)...", hint: "Ctrl+R", run: func() { a.findBar(true) }},
-			{label: "次を検索(N)", hint: "F3", run: func() { a.findAgain(true) }},
-			{label: "行へ移動(G)...", hint: "Ctrl+G", run: a.cmdGoto},
+			{label: m.Find, hint: "Ctrl+F", run: func() { a.findBar(false) }},
+			{label: m.Replace, hint: "Ctrl+R", run: func() { a.findBar(true) }},
+			{label: m.FindNext, hint: "F3", run: func() { a.findAgain(true) }},
+			{label: m.GoToLine, hint: "Ctrl+G", run: a.cmdGoto},
 			sep,
-			{label: "すべて選択(A)", hint: "Ctrl+A", run: func() { a.doc().selectAll() }},
+			{label: m.SelectAll, hint: "Ctrl+A", run: func() { a.doc().selectAll() }},
 		}},
-		{label: "表示(V)", items: []menuItem{
-			{text: func() string { return "右端で折り返す(W): " + onOff(a.env.wrap) }, hint: "Alt+Z", run: a.cmdToggleWrap},
-			{text: func() string { return "インデント(I): " + a.indentName() }, run: a.cmdToggleIndent},
-			{text: func() string { return fmt.Sprintf("タブ幅(T): %d", a.env.tabW) }, run: a.cmdCycleTabWidth},
-			{text: func() string { return "改行コード(E): " + a.eolLabel() }, run: a.cmdToggleEOL},
+		{label: m.MenuView, items: []menuItem{
+			{text: func() string { return fmt.Sprintf(m.WordWrap, onOff(a.env.wrap)) }, hint: "Alt+Z", run: a.cmdToggleWrap},
+			{text: func() string { return fmt.Sprintf(m.Indent, a.indentName()) }, run: a.cmdToggleIndent},
+			{text: func() string { return fmt.Sprintf(m.TabWidth, a.env.tabW) }, run: a.cmdCycleTabWidth},
+			{text: func() string { return fmt.Sprintf(m.LineEndings, a.eolLabel()) }, run: a.cmdToggleEOL},
 			sep,
-			{label: "ドキュメント一覧(D)...", hint: "Ctrl+P", run: a.cmdDocList},
+			{label: m.DocumentList, hint: "Ctrl+P", run: a.cmdDocList},
 		}},
-		{label: "ヘルプ(H)", items: []menuItem{
-			{label: "キー操作(K)", run: a.cmdKeys},
-			{label: "バージョン情報(A)", run: a.cmdAbout},
+		{label: m.MenuHelp, items: []menuItem{
+			{label: m.KeyList, run: a.cmdKeys},
+			{label: m.AboutApp, run: a.cmdAbout},
 		}},
 	}
 }
@@ -117,7 +118,7 @@ func (a *App) openMenu(idx int) {
 		m := a.menus[a.menuOpen]
 		labelW, hintW := 0, 0
 		for _, it := range m.items {
-			labelW = max(labelW, strWidth(it.title()))
+			labelW = max(labelW, labelWidth(it.title()))
 			hintW = max(hintW, strWidth(it.hint))
 		}
 		sw, _ := a.scr.Size()

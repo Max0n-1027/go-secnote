@@ -81,9 +81,10 @@ func listDir(dir string) ([]string, error) {
 // pickFile asks the user for a file to open or to save to, starting in dir
 // with name filled in. It returns false when the user cancelled.
 func (a *App) pickFile(mode pickMode, dir, name string) (string, bool) {
-	title, action := "開く", "開く"
+	m := a.msg
+	title, hint := m.OpenTitle, m.OpenHint
 	if mode == pickSave {
-		title, action = "名前を付けて保存", "保存"
+		title, hint = m.SaveAsTitle, m.SaveHint
 	}
 	var (
 		list    listBox
@@ -96,7 +97,7 @@ func (a *App) pickFile(mode pickMode, dir, name string) (string, bool) {
 	load := func(to string) bool {
 		names, err := listDir(to)
 		if err != nil {
-			errText = "フォルダーを開けません: " + reason(err)
+			errText = fmt.Sprintf(m.CannotOpenFolder, reason(err))
 			return false
 		}
 		dir = to
@@ -105,7 +106,7 @@ func (a *App) pickFile(mode pickMode, dir, name string) (string, bool) {
 	}
 	if !load(dir) {
 		if wd, err := os.Getwd(); err != nil || !load(wd) {
-			a.errorBox("フォルダーを開けません", nil)
+			a.errorBox(errText, nil)
 			return "", false
 		}
 		errText = ""
@@ -131,16 +132,16 @@ func (a *App) pickFile(mode pickMode, dir, name string) (string, bool) {
 			}
 			return false
 		case mode == pickOpen && err != nil:
-			errText = "ファイルが見つかりません"
+			errText = m.FileNotFound
 			return false
 		case mode == pickSave && err == nil:
-			msg := fmt.Sprintf("「%s」は既に存在します。上書きしますか?", filepath.Base(path))
-			if a.messageBox(title, msg, "上書き(O)", "キャンセル") != 0 {
+			msg := fmt.Sprintf(m.AlreadyExists, filepath.Base(path))
+			if a.messageBox(title, msg, m.Overwrite, m.Cancel) != 0 {
 				return false
 			}
 		case mode == pickSave:
 			if _, err := os.Stat(filepath.Dir(path)); err != nil {
-				errText = "保存先のフォルダーがありません"
+				errText = m.NoSuchFolder
 				return false
 			}
 		}
@@ -161,13 +162,12 @@ func (a *App) pickFile(mode pickMode, dir, name string) (string, bool) {
 		list.draw(a.scr, rect{in.x, in.y + 2, in.w, max(in.h-6, 1)})
 
 		y := in.y + in.h - 3
-		const label = "ファイル名: "
-		lw := drawStr(a.scr, in.x, y, in.w, label, stPanel)
+		lw := drawStr(a.scr, in.x, y, in.w, m.FileName, stPanel)
 		a.scr.ShowCursor(input.draw(a.scr, in.x+lw, y, in.w-lw, stField), y)
 		if errText != "" {
 			drawStr(a.scr, in.x, y+2, in.w, errText, stPanelErr)
 		} else {
-			drawStr(a.scr, in.x, y+2, in.w, "Enter: "+action+"  Esc: キャンセル", stPanelDim)
+			drawStr(a.scr, in.x, y+2, in.w, hint, stPanelDim)
 		}
 	}
 

@@ -181,7 +181,7 @@ func (a *App) findAgain(forward bool) {
 		return
 	}
 	if !a.findStep(m, forward) {
-		a.status = "見つかりません: " + a.find.needle.text
+		a.status = fmt.Sprintf(a.msg.NotFound, a.find.needle.text)
 	}
 }
 
@@ -198,8 +198,6 @@ func (a *App) findStep(m *matcher, forward bool) bool {
 	}
 	return ok
 }
-
-const findHint = "Enter/F3: 次  Shift+F3: 前  Tab: 欄の移動  Alt+A: すべて置換  Esc: 閉じる"
 
 // findBar opens the search bar above the status bar, with a second row for
 // replacing when replace is set, and returns when the user closes it.
@@ -238,7 +236,7 @@ func (a *App) findBar(replace bool) {
 		m, err = f.matcher()
 		errText = ""
 		if err != nil {
-			errText = "正規表現が正しくありません"
+			errText = a.msg.BadRegex
 		}
 		if m != nil {
 			if start, end, ok := d.find(m, origin, true); ok {
@@ -269,7 +267,7 @@ func (a *App) findBar(replace bool) {
 		n := d.replaceAll(m, f.repl.text)
 		origin = d.cur
 		count()
-		a.status = fmt.Sprintf("%d 件置換しました", n)
+		a.status = fmt.Sprintf(a.msg.Replaced, n)
 	}
 	setRows := func() {
 		a.findRows = 1
@@ -282,7 +280,7 @@ func (a *App) findBar(replace bool) {
 	}
 	setRows()
 	refresh()
-	a.status = findHint
+	a.status = a.msg.FindHint
 
 	panel := func() {
 		w, h := a.scr.Size()
@@ -292,15 +290,17 @@ func (a *App) findBar(replace bool) {
 		options := []struct {
 			label string
 			on    *bool
-		}{{"大小区別(C)", &f.caseSens}, {"単語単位(W)", &f.word}, {"正規表現(R)", &f.regex}}
+		}{{a.msg.MatchCase, &f.caseSens}, {a.msg.WholeWord, &f.word}, {a.msg.Regex, &f.regex}}
 		optW := 0
 		for _, o := range options {
-			optW += strWidth(o.label) + 5
+			optW += labelWidth(o.label) + 5
 		}
-		const labelW, infoW = 7, 10
-		inputW := max(w-labelW-optW-infoW-1, 12)
+		// Room on the right for the match count, as wide as "9999/9999".
+		infoW := max(strWidth(a.msg.NoMatches), 9)
+		labelW := max(strWidth(a.msg.FindLabel), strWidth(a.msg.ReplaceLabel)) + 2
+		inputW := max(w-labelW-2-optW-infoW, 12)
 
-		drawStr(a.scr, 1, y, labelW, "検索:", stPanel)
+		drawStr(a.scr, 1, y, labelW, a.msg.FindLabel, stPanel)
 		findX := f.needle.draw(a.scr, labelW, y, inputW, stField)
 		x := labelW + inputW + 2
 		toggles = toggles[:0]
@@ -319,16 +319,16 @@ func (a *App) findBar(replace bool) {
 		case errText != "":
 			drawStr(a.scr, x, y, w-x, errText, stPanelErr)
 		case m != nil && total == 0:
-			drawStr(a.scr, x, y, w-x, "なし", stPanelErr)
+			drawStr(a.scr, x, y, w-x, a.msg.NoMatches, stPanelErr)
 		case m != nil && index == 0:
-			drawStr(a.scr, x, y, w-x, fmt.Sprintf("%d 件", total), stPanel)
+			drawStr(a.scr, x, y, w-x, fmt.Sprintf(a.msg.MatchCount, total), stPanel)
 		case m != nil:
 			drawStr(a.scr, x, y, w-x, fmt.Sprintf("%d/%d", index, total), stPanel)
 		}
 
 		replX := 0
 		if replace {
-			drawStr(a.scr, 1, y+1, labelW, "置換:", stPanel)
+			drawStr(a.scr, 1, y+1, labelW, a.msg.ReplaceLabel, stPanel)
 			replX = f.repl.draw(a.scr, labelW, y+1, inputW, stField)
 		}
 		if focus == &f.repl {
@@ -339,7 +339,7 @@ func (a *App) findBar(replace bool) {
 	}
 
 	a.modal(panel, func(ev tcell.Event) bool {
-		a.status = findHint
+		a.status = a.msg.FindHint
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
 			shift := ev.Modifiers()&tcell.ModShift != 0

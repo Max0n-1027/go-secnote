@@ -80,38 +80,45 @@ func drawStr(scr tcell.Screen, x, y, maxW int, s string, st tcell.Style) int {
 	return col
 }
 
-// drawLabel draws a label such as "開く(O)..." with its accelerator letter
-// underlined.
-func drawLabel(scr tcell.Screen, x, y, maxW int, label string, st tcell.Style) int {
-	i := accelIndex(label)
-	if i < 0 {
-		return drawStr(scr, x, y, maxW, label, st)
+// labelText splits a menu or button label, such as "&Open..." or
+// "開く(&O)...", into the text to show and the byte offset of its
+// accelerator letter in that text, which is -1 when it has none.
+func labelText(label string) (text string, accel int) {
+	i := strings.IndexByte(label, '&')
+	if i < 0 || i == len(label)-1 {
+		return label, -1
 	}
-	n := drawStr(scr, x, y, maxW, label[:i], st)
-	n += drawStr(scr, x+n, y, maxW-n, label[i:i+1], st.Underline(true))
-	n += drawStr(scr, x+n, y, maxW-n, label[i+1:], st)
+	return label[:i] + label[i+1:], i
+}
+
+// labelWidth returns the number of cells drawLabel needs for label.
+func labelWidth(label string) int {
+	text, _ := labelText(label)
+	return strWidth(text)
+}
+
+// drawLabel draws a label with its accelerator letter underlined and
+// returns the number of cells used.
+func drawLabel(scr tcell.Screen, x, y, maxW int, label string, st tcell.Style) int {
+	text, i := labelText(label)
+	if i < 0 {
+		return drawStr(scr, x, y, maxW, text, st)
+	}
+	_, size := utf8.DecodeRuneInString(text[i:])
+	n := drawStr(scr, x, y, maxW, text[:i], st)
+	n += drawStr(scr, x+n, y, maxW-n, text[i:i+size], st.Underline(true))
+	n += drawStr(scr, x+n, y, maxW-n, text[i+size:], st)
 	return n
 }
 
-// accelIndex returns the byte index of the accelerator letter in a label that
-// marks it as "(X)", or -1.
-func accelIndex(label string) int {
-	for i := 0; i+2 < len(label); i++ {
-		if label[i] == '(' && label[i+2] == ')' && isAccel(label[i+1]) {
-			return i + 1
-		}
-	}
-	return -1
-}
-
-func isAccel(c byte) bool { return c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' }
-
 // accelOf returns the lower-case accelerator letter of label, or 0.
 func accelOf(label string) rune {
-	if i := accelIndex(label); i >= 0 {
-		return unicode.ToLower(rune(label[i]))
+	text, i := labelText(label)
+	if i < 0 {
+		return 0
 	}
-	return 0
+	r, _ := utf8.DecodeRuneInString(text[i:])
+	return unicode.ToLower(r)
 }
 
 func fillRect(scr tcell.Screen, x, y, w, h int, st tcell.Style) {
@@ -139,22 +146,33 @@ func fitRight(s string, maxW int) string {
 // hang past the right edge instead, where panels keep a margin.
 const noLineStart = "、。，．,.!?！？)）]］}｝」』"
 
-// wrapText breaks s into lines of at most w cells.
+// wrapText breaks s into lines of at most w cells. Lines break after a space
+// when there is one to break at, and anywhere otherwise, as Japanese text
+// needs.
 func wrapText(s string, w int) []string {
 	var lines []string
 	for _, para := range strings.Split(s, "\n") {
 		start, col, state := 0, 0, -1
+		space := -1 // offset just after the last space on the current line
 		rest := para
 		for off := 0; rest != ""; {
 			var raw string
 			var cw int
 			raw, rest, _, cw, state = cluster(rest, state)
-			if col+cw > w && col > 0 && !strings.Contains(noLineStart, raw) {
-				lines = append(lines, para[start:off])
-				start, col = off, 0
+			if col+cw > w && col > 0 && raw != " " && !strings.Contains(noLineStart, raw) {
+				end := off
+				if space > start {
+					end = space
+				}
+				lines = append(lines, strings.TrimRight(para[start:end], " "))
+				start, space = end, -1
+				col = strWidth(para[start:off])
 			}
 			col += cw
 			off += len(raw)
+			if raw == " " {
+				space = off
+			}
 		}
 		lines = append(lines, para[start:])
 	}

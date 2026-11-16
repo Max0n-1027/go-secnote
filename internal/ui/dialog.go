@@ -27,7 +27,7 @@ type buttonRow struct {
 func (b *buttonRow) width() int {
 	total := 2 * (len(b.labels) - 1)
 	for _, l := range b.labels {
-		total += strWidth(l) + 4
+		total += labelWidth(l) + 4
 	}
 	return total
 }
@@ -41,7 +41,7 @@ func (b *buttonRow) draw(scr tcell.Screen, r rect, focus int) {
 		if i == focus {
 			st = stFocus
 		}
-		w := strWidth(l) + 4
+		w := labelWidth(l) + 4
 		fillRect(scr, x, r.y, w, 1, st)
 		scr.Put(x, r.y, "[", st)
 		drawLabel(scr, x+2, r.y, w-4, l, st)
@@ -125,7 +125,7 @@ func (a *App) errorBox(msg string, err error) {
 	if err != nil {
 		msg += "\n" + err.Error()
 	}
-	a.messageBox("エラー", msg, "OK")
+	a.messageBox(a.msg.ErrorTitle, msg, a.msg.OK)
 }
 
 // promptSpec describes a dialog with one or more text fields.
@@ -148,7 +148,7 @@ func (a *App) prompt(p promptSpec) ([]string, bool) {
 	for i := range inputs {
 		inputs[i].masked = p.masked
 	}
-	buttons := buttonRow{labels: []string{"OK", "キャンセル"}}
+	buttons := buttonRow{labels: []string{a.msg.OK, a.msg.Cancel}}
 	focus, errText, ok := 0, "", false
 
 	values := func() []string {

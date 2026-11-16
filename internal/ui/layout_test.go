@@ -121,4 +121,13 @@ func TestWrapText(t *testing.T) {
 	if want := []string{"あい", "うえ", "お"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("lines = %q, want %q", got, want)
 	}
+	got = wrapText("Choose a password to encrypt memo.age. If you forget it, the file cannot be opened.", 30)
+	want = []string{"Choose a password to encrypt", "memo.age. If you forget it,", "the file cannot be opened."}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("lines = %q, want %q: English must break between words", got, want)
+	}
+	got = wrapText("supercalifragilistic", 8)
+	if want := []string{"supercal", "ifragili", "stic"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("lines = %q, want %q: a word longer than the line is cut", got, want)
+	}
 }

@@ -23,7 +23,7 @@ const utf8BOM = "\xEF\xBB\xBF"
 func (a *App) newDoc() *document {
 	a.untitled++
 	d := newDocument(&a.env, "")
-	d.name = fmt.Sprintf("無題 %d", a.untitled)
+	d.name = fmt.Sprintf(a.msg.Untitled, a.untitled)
 	a.addDoc(d)
 	return d
 }
@@ -64,9 +64,10 @@ func (a *App) cmdOpen() {
 // password. With create set, a path that does not exist yet gives an empty
 // document that will be saved there.
 func (a *App) openPath(path string, create bool) {
+	m := a.msg
 	path, err := filepath.Abs(path)
 	if err != nil {
-		a.errorBox("開けませんでした: "+path, err)
+		a.errorBox(fmt.Sprintf(m.CannotOpen, path), err)
 		return
 	}
 	for i, d := range a.docs {
@@ -76,7 +77,7 @@ func (a *App) openPath(path string, create bool) {
 		}
 	}
 
-	data, err := readFile(path)
+	data, err := a.readFile(path)
 	if create && errors.Is(err, fs.ErrNotExist) {
 		d := newDocument(&a.env, "")
 		d.path = path
@@ -84,7 +85,7 @@ func (a *App) openPath(path string, create bool) {
 		return
 	}
 	if err != nil {
-		a.errorBox("開けませんでした: "+filepath.Base(path), err)
+		a.errorBox(fmt.Sprintf(m.CannotOpen, filepath.Base(path)), err)
 		return
 	}
 
@@ -92,22 +93,22 @@ func (a *App) openPath(path string, create bool) {
 	encrypted := vault.IsEncrypted(data)
 	if encrypted {
 		_, ok := a.prompt(promptSpec{
-			title:  "パスワード",
-			note:   fmt.Sprintf("「%s」のパスワードを入力してください。", filepath.Base(path)),
-			labels: []string{"パスワード"},
+			title:  m.PasswordTitle,
+			note:   fmt.Sprintf(m.PasswordNote, filepath.Base(path)),
+			labels: []string{m.PasswordLabel},
 			masked: true,
 			check: func(v []string) string {
 				if v[0] == "" {
-					return "パスワードを入力してください"
+					return m.EnterPassword
 				}
-				a.flash("復号しています...")
+				a.flash(m.Decrypting)
 				defer func() { a.status = "" }()
 				plaintext, err := vault.Decrypt(v[0], data)
 				switch {
 				case errors.Is(err, vault.ErrWrongPassword):
-					return "パスワードが違います"
+					return m.WrongPassword
 				case err != nil:
-					return "復号できません: " + err.Error()
+					return fmt.Sprintf(m.CannotDecrypt, err)
 				}
 				data, password = plaintext, v[0]
 				return ""
@@ -119,7 +120,7 @@ func (a *App) openPath(path string, create bool) {
 	}
 
 	if !utf8.Valid(data) {
-		a.errorBox("開けませんでした: "+filepath.Base(path)+"\nUTF-8 のテキストではありません。", nil)
+		a.errorBox(fmt.Sprintf(m.CannotOpen, filepath.Base(path))+"\n"+m.NotUTF8, nil)
 		return
 	}
 	text := strings.TrimPrefix(string(data), utf8BOM)
@@ -129,20 +130,20 @@ func (a *App) openPath(path string, create bool) {
 	d.savedCRLF = d.crlf
 	a.addDoc(d)
 	if d.plain {
-		a.status = "暗号化されていないファイルです。保存すると暗号化した別のファイルを作ります。"
+		a.status = m.PlainNotice
 	}
 }
 
-func readFile(path string) ([]byte, error) {
+func (a *App) readFile(path string) ([]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 	if fi.IsDir() {
-		return nil, errors.New("フォルダーです")
+		return nil, errors.New(a.msg.IsFolder)
 	}
 	if fi.Size() > maxFileSize {
-		return nil, fmt.Errorf("ファイルが大きすぎます (上限 %d MiB)", maxFileSize>>20)
+		return nil, fmt.Errorf(a.msg.TooLarge, maxFileSize>>20)
 	}
 	return os.ReadFile(path)
 }
@@ -176,16 +177,16 @@ func (a *App) saveAs(d *document) bool {
 		return false
 	}
 	v, ok := a.prompt(promptSpec{
-		title:  "パスワードの設定",
-		note:   fmt.Sprintf("「%s」を暗号化するパスワードを決めてください。忘れるとファイルは開けなくなります。", filepath.Base(path)),
-		labels: []string{"新しいパスワード", "確認のためもう一度"},
+		title:  a.msg.NewPasswordTitle,
+		note:   fmt.Sprintf(a.msg.NewPasswordNote, filepath.Base(path)),
+		labels: []string{a.msg.NewPassword, a.msg.ConfirmPassword},
 		masked: true,
 		check: func(v []string) string {
 			switch {
 			case v[0] == "":
-				return "パスワードを入力してください"
+				return a.msg.EnterPassword
 			case v[0] != v[1]:
-				return "2 つのパスワードが一致しません"
+				return a.msg.PasswordsDiffer
 			}
 			return ""
 		},
@@ -197,19 +198,19 @@ func (a *App) saveAs(d *document) bool {
 }
 
 func (a *App) write(d *document, path, password string) bool {
-	a.flash("暗号化して保存しています...")
+	a.flash(a.msg.Saving)
 	data, err := vault.Encrypt(password, []byte(d.text()))
 	if err == nil {
 		err = vault.WriteFile(path, data)
 	}
 	if err != nil {
 		a.status = ""
-		a.errorBox("保存できませんでした: "+filepath.Base(path), err)
+		a.errorBox(fmt.Sprintf(a.msg.CannotSave, filepath.Base(path)), err)
 		return false
 	}
 	d.path, d.password, d.plain = path, password, false
 	d.markSaved()
-	a.status = "保存しました: " + d.title()
+	a.status = fmt.Sprintf(a.msg.Saved, d.title())
 	return true
 }
 
@@ -219,8 +220,8 @@ func (a *App) confirmClose(d *document) bool {
 	if !d.modified() {
 		return true
 	}
-	msg := fmt.Sprintf("「%s」への変更を保存しますか?", d.title())
-	switch a.messageBox("変更の保存", msg, "保存(S)", "保存しない(N)", "キャンセル") {
+	m := a.msg
+	switch a.messageBox(m.SaveChangesTitle, fmt.Sprintf(m.SaveChanges, d.title()), m.SaveButton, m.DontSave, m.Cancel) {
 	case 0:
 		return a.save(d)
 	case 1:
@@ -252,13 +253,13 @@ func (a *App) cmdQuit() {
 
 func (a *App) cmdUndo() {
 	if !a.doc().undo() {
-		a.status = "元に戻す操作はありません"
+		a.status = a.msg.NothingToUndo
 	}
 }
 
 func (a *App) cmdRedo() {
 	if !a.doc().redo() {
-		a.status = "やり直す操作はありません"
+		a.status = a.msg.NothingToRedo
 	}
 }
 
@@ -281,12 +282,12 @@ func (a *App) cmdGoto() {
 	d := a.doc()
 	line := 0
 	_, ok := a.prompt(promptSpec{
-		title:  "行へ移動",
-		labels: []string{fmt.Sprintf("行番号 (1 - %d)", d.buf.LineCount())},
+		title:  a.msg.GoToLineTitle,
+		labels: []string{fmt.Sprintf(a.msg.LineNumber, d.buf.LineCount())},
 		check: func(v []string) string {
 			n, err := strconv.Atoi(strings.TrimSpace(v[0]))
 			if err != nil || n < 1 {
-				return "行番号を数字で入力してください"
+				return a.msg.EnterLineNumber
 			}
 			line = min(n, d.buf.LineCount()) - 1
 			return ""
@@ -330,30 +331,15 @@ func (a *App) cmdDocList() {
 			titles[i] = "*" + titles[i]
 		}
 	}
-	if i, ok := a.pickList("ドキュメント一覧", titles, a.cur); ok {
+	if i, ok := a.pickList(a.msg.DocumentsTitle, titles, a.cur); ok {
 		a.cur = i
 	}
 }
 
 func (a *App) cmdKeys() {
-	a.messageBox("キー操作",
-		"Ctrl+N 新規    Ctrl+O 開く    Ctrl+S 上書き保存\n"+
-			"Ctrl+W 閉じる  Ctrl+Q 終了    Ctrl+P ドキュメント一覧\n"+
-			"Ctrl+Z 元に戻す               Ctrl+Y やり直し\n"+
-			"Ctrl+X 切り取り  Ctrl+C コピー  Ctrl+V 貼り付け\n"+
-			"Ctrl+A すべて選択             Ctrl+G 行へ移動\n"+
-			"Ctrl+F 検索    Ctrl+R 置換    F3 / Shift+F3 次・前を検索\n"+
-			"Shift+矢印キー 選択           Ctrl+Left / Right 単語単位で移動\n"+
-			"Ctrl+Home / End 文頭・文末    Ctrl+Up / Down スクロール\n"+
-			"Tab / Shift+Tab インデントの増減\n"+
-			"Alt+Z 右端で折り返す          F10 メニュー",
-		"OK")
+	a.messageBox(a.msg.KeysTitle, a.msg.KeysText, a.msg.OK)
 }
 
 func (a *App) cmdAbout() {
-	a.messageBox("バージョン情報",
-		"secnote "+a.version+"\n"+
-			"パスワードで暗号化して保存するテキストエディター\n\n"+
-			"ファイル形式: age (scrypt パスフレーズ)",
-		"OK")
+	a.messageBox(a.msg.AboutTitle, fmt.Sprintf(a.msg.AboutText, a.version), a.msg.OK)
 }

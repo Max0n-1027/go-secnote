@@ -8,11 +8,14 @@ import (
 	"unicode"
 
 	"github.com/gdamore/tcell/v2"
+
+	"github.com/Max0n-1027/go-secnote/internal/i18n"
 )
 
 // Options are the settings the editor starts with.
 type Options struct {
 	Version  string
+	Lang     i18n.Lang // language of the interface; English if unset
 	TabWidth int
 	Tabs     bool // indent with tabs rather than spaces
 	NoWrap   bool
@@ -21,6 +24,7 @@ type Options struct {
 // App is the running editor.
 type App struct {
 	scr     tcell.Screen
+	msg     *i18n.Messages
 	version string
 	env     env
 	docs    []*document
@@ -103,7 +107,7 @@ func Run(opts Options, paths []string) error {
 func newApp(scr tcell.Screen, opts Options) *App {
 	scr.EnableMouse(tcell.MouseButtonEvents | tcell.MouseDragEvents)
 	scr.EnablePaste()
-	a := &App{scr: scr, version: opts.Version, menuOpen: -1}
+	a := &App{scr: scr, msg: i18n.For(opts.Lang), version: opts.Version, menuOpen: -1}
 	a.env = env{tabW: opts.TabWidth, spaces: !opts.Tabs, wrap: !opts.NoWrap}
 	if a.env.tabW < 1 || a.env.tabW > 16 {
 		a.env.tabW = 4
@@ -257,7 +261,7 @@ func (a *App) drawMenuBar() {
 		if i == a.menuOpen {
 			st = stFocus
 		}
-		m.x, m.w = x, strWidth(m.label)+2
+		m.x, m.w = x, labelWidth(m.label)+2
 		fillRect(a.scr, m.x, 0, m.w, 1, st)
 		drawLabel(a.scr, m.x+1, 0, m.w, m.label, st)
 		x += m.w
@@ -270,19 +274,19 @@ func (a *App) drawStatus() {
 	d := a.doc()
 	fillRect(a.scr, 0, y, w, 1, stBar)
 
-	state := "未保存"
+	state := a.msg.StateNew
 	switch {
 	case d.password != "":
-		state = "暗号化"
+		state = a.msg.StateEncrypted
 	case d.plain:
-		state = "平文"
+		state = a.msg.StatePlain
 	}
 	segments := []struct {
 		text string
 		run  func()
 	}{
 		{state, nil},
-		{fmt.Sprintf("行 %d, 列 %d", d.cur.Line+1, d.column()), a.cmdGoto},
+		{fmt.Sprintf(a.msg.Position, d.cur.Line+1, d.column()), a.cmdGoto},
 		{a.indentLabel(), a.cmdToggleIndent},
 		{a.eolLabel(), a.cmdToggleEOL},
 	}
@@ -318,9 +322,9 @@ func (a *App) drawStatus() {
 
 func (a *App) indentName() string {
 	if a.env.spaces {
-		return "スペース"
+		return a.msg.Spaces
 	}
-	return "タブ"
+	return a.msg.Tabs
 }
 
 func (a *App) indentLabel() string {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 
+	"github.com/Max0n-1027/go-secnote/internal/i18n"
 	"github.com/Max0n-1027/go-secnote/internal/vault"
 )
 
@@ -25,7 +26,13 @@ type harness struct {
 	done chan struct{} // closed when the editor's main loop returns
 }
 
+// start runs the editor in Japanese, which most tests check the screen in.
 func start(t *testing.T, paths ...string) *harness {
+	t.Helper()
+	return startIn(t, i18n.Japanese, paths...)
+}
+
+func startIn(t *testing.T, lang i18n.Lang, paths ...string) *harness {
 	t.Helper()
 	scr := tcell.NewSimulationScreen("UTF-8")
 	if err := scr.Init(); err != nil {
@@ -33,7 +40,7 @@ func start(t *testing.T, paths ...string) *harness {
 	}
 	scr.SetSize(80, 24)
 	h := &harness{t: t, scr: scr, done: make(chan struct{})}
-	h.app = newApp(scr, Options{Version: "test", TabWidth: 4})
+	h.app = newApp(scr, Options{Version: "test", Lang: lang, TabWidth: 4})
 	go func() {
 		defer close(h.done)
 		h.app.run(paths)
